@@ -1,71 +1,26 @@
 from langchain_openai import AzureChatOpenAI
-from langchain.tools import tool
+from langchain.tools import Tool
 from dotenv import load_dotenv 
 import os 
-from pydantic import BaseModel, Field 
-from typing import Optional, List 
-from typing_extensions import TypedDict, Annotated
-from langchain.schema import SystemMessage, HumanMessage, AIMessage
+import requests
+from langchain.agents import create_openai_tools_agent, AgentExecutor
 from langchain.memory import ConversationBufferMemory
+from langchain.agents import initialize_agent, AgentType
+
 
 #load environment variables 
 load_dotenv()
 
 #Set up Azure OpenAI 
-endpoint = os.getenv("ENDPOINT_URL", "YOUR_ENDPOINT_URL")  
+endpoint = os.getenv("ENDPOINT_URL", "<YOUR_ENDPOINT_URL>")  
 deployment = os.getenv("DEPLOYMENT_NAME", "gpt-4o")  
 subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
 
-tools = []
-
-# Define System Message
-system_message = SystemMessage(
-    content="""
-    You are MedAssist AI, an intelligent healthcare assistant specializing in asthma management.
-    Your role is to provide **evidence-based, empathetic, and accurate guidance** while ensuring patient safety.
-
-    ## **Guidelines**
-    - **Medical Knowledge**: Your recommendations are based on authoritative sources like WHO, NIH, and medical research.
-    - **Patient-Friendly Language**: Explain in simple terms while maintaining medical accuracy.
-    - **Consultation Advice**: Recommend actions but always suggest consulting a doctor for proper diagnosis.
-    - **Environmental Awareness**: If air quality is poor or weather is unsuitable, suggest precautions immediately.
-    - **Medication Guidance**: Mention medications (e.g., Salbutamol) **only if prescribed by a doctor**. Never suggest dosages.
-    - **Privacy & Ethics**: Comply with medical privacy standards. Do not store patient-sensitive data.
-    
-    ## **Response Formatting**
-    - Use **bullet points** for clarity.
-    - Provide **direct, actionable advice** before explanations.
-    - If unsure, **politely defer** rather than giving potentially harmful advice.
-
-    ## **Critical Precautions When Environmental Conditions Are Unsuitable**
-    **If air quality is poor, weather conditions are triggering asthma, or allergens are present, always recommend:**
-    - **Taking emergency medicines prescribed by the doctor (especially Salbutamol).**
-    - **Taking hot steam twice a day (this is a highly effective and easy-to-do treatment).**
-    - **Avoiding dust, cold air, and all allergens that the patient is allergic to.**
-    - **Wearing a protective mask when going outside.**
-    - **Staying indoors as much as possible if air quality is extremely poor.**
-
-    ## **Recommendations for New Patients or Those Without Treatment History**
-    **If the patient is new or has not started treatment yet, always recommend:**
-    - **Taking an allergy test** to identify all allergens.
-    - **Taking a blood test** to check if the Absolute Eosinophil Count (AEC) is within a normal range.
-    - **Taking an FVC (Forced Vital Capacity) test** to check lung inhale/exhale power.
-    - **Consulting a doctor** after completing these tests for proper medication.
-    - **Do NOT recommend X-rays** unless explicitly requested by a specialist.
-    - **If a patient asks about X-rays**, state:  
-      ❝X-rays are not required for asthma diagnosis. Allergy tests, blood tests (AEC), and FVC tests are sufficient.  
-      If a doctor repeatedly asks for X-rays without valid reasons, seek a second opinion.❞
-
-    ## **Patient History Awareness**
-    - Always ask **whether the patient has followed any recommendations before**.
-    - If they have **not** taken tests or precautions yet, prioritize **guiding them through the correct medical process**.
-
-    ## **Emergency Protocol**
-    - If a patient reports **severe symptoms** (e.g., difficulty breathing, blue lips, extreme coughing), **immediately advise seeking emergency medical help.**
-    """
-)
+#API KEYS
+google_api_key = os.getenv("GOOGLE_API_KEY")
 
 
+#Initialize_LLM
 llm = AzureChatOpenAI(
     azure_endpoint=endpoint,
     azure_deployment=deployment,
@@ -73,13 +28,123 @@ llm = AzureChatOpenAI(
     api_version="2024-08-01-preview",
     )
 
-# Define User Input
-human_message = HumanMessage(
-    content="What should I do if my asthma symptoms get worse during cold weather?"
+
+def get_geolocation(city: str = None) -> dict:
+    """Fetch geolocation using Google API based on city name or IP."""
+    if city:
+        print(f"Fetching coordinates for {city}...")
+        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={city}&key={google_api_key}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            results = response.json().get("results", [])
+            if results:
+                location = results[0]["geometry"]["location"]
+                return {"lat": location["lat"], "lng": location["lng"]}
+        return {"error": f"Failed to fetch geolocation for {city}."}
+
+    # If no city is provided, use IP-based geolocation
+    print("Fetching geolocation based on IP...")
+    url = f"https://www.googleapis.com/geolocation/v1/geolocate?key={google_api_key}"
+    data = {"considerIp": True}
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(url, json=data, headers=headers)
+    
+    return response.json().get("location", {}) if response.status_code == 200 else {"error": "Failed to fetch location"}
+
+def get_air_quality(lat: float, lon: float) -> dict:
+    """Fetch the air quality index for given latitude & longitude."""
+    print(f"Fetching AQI for coordinates: {lat}, {lon}...")
+    url = f"https://airquality.googleapis.com/v1/currentConditions:lookup?key={google_api_key}"
+    data = {"location": {"latitude": lat, "longitude": lon}}
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.post(url, json=data, headers=headers)
+    raw_data = response.json()
+
+    # Extract required fields correctly
+    if "indexes" in raw_data and isinstance(raw_data["indexes"], list) and raw_data["indexes"]:
+        aqi_data = raw_data["indexes"][0]  # Assuming first index is the relevant one
+        return {
+            "aqi": aqi_data.get("aqi", "Unknown"),
+            "category": aqi_data.get("category", "Unknown"),
+            "dominantPollutant": aqi_data.get("dominantPollutant", "Unknown")
+        }
+
+    return {"aqi": "Unknown", "category": "Unknown", "dominantPollutant": "Unknown"}
+
+
+def get_air_quality_for_user(city: str = None) -> dict:
+    """Fetch air quality based on the specified city or user's detected location."""
+    print(f"Processing AQI request for city: {city}...")
+
+    location = get_geolocation(city)
+    if "error" in location:
+        return {"error": "I couldn't determine your location. Please try specifying a valid city."}
+
+    lat, lon = location.get("lat"), location.get("lng")
+    
+    air_quality = get_air_quality(lat, lon)
+
+    aqi= air_quality.get("aqi", -1)
+    category = air_quality.get("category", "Unknown")
+    dominantPollutant = air_quality.get("dominantPollutant", "Unknown")
+
+    # Structure the output, but allow LLM to interpret and respond naturally
+    response = {
+        "aqi": aqi,
+        "category": category,
+        "dominantPollutant": dominantPollutant,
+        "city": city,
+        "recommendation": f"The air quality in {city} is currently {category} (aqi: {aqi}). "
+                          f"The dominant pollutant is {dominantPollutant}. "
+                          "Based on this, what should be the best precautionary steps for I am an asthma patient?"
+    }
+
+    return response
+
+# ✅ Define LangChain Tools
+geolocation_tool = Tool(
+    name="get_geolocation",
+    func=get_geolocation,
+    description="Fetches the user's geolocation.",
 )
 
-# Generate Response
-response = llm.invoke([system_message, human_message])
+air_quality_tool = Tool(
+    name="get_air_quality_for_user",
+    func=get_air_quality_for_user,
+    description="Fetches air quality index based on user's location.",
+    return_direct=True  # ✅ Ensures function output is used directly
+)
 
-# Print AI Response
-print(response)
+#Tools
+tools=[geolocation_tool, air_quality_tool]
+# Initialize the LangChain Agent
+agent = initialize_agent(
+    tools=tools,
+    llm=llm,
+    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    verbose=True
+)
+# Define the user query
+user_query = "What is the AQI of Capetown"
+
+# Run the agent
+struct_response = agent.run(user_query)
+print(struct_response)
+
+#Follow up 
+def format_air_quality(data):
+    return (f"The air quality in {data['city']} is currently {data['category']} (AQI: {data['aqi']}). "
+            f"The dominant pollutant is {data['dominantPollutant']}. "
+            f"Recommendation: {data['recommendation']}")
+
+response=format_air_quality(struct_response)
+
+#Re-run the agent 
+final_response=agent.run(response)
+print(final_response)
+
+
+
+
+
