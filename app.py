@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 import os 
 import requests
 from langchain.prompts import PromptTemplate
-from langchain.agents import create_openai_tools_agent, AgentExecutor
-from langchain.memory import ConversationBufferMemory
 from langchain.agents import initialize_agent, AgentType
 from langchain_community.vectorstores import FAISS
 from langchain_openai import AzureOpenAIEmbeddings
@@ -157,7 +155,7 @@ def get_aqi_recommendations(data) -> str:
     prompt_template = PromptTemplate(
         input_variables=["category", "aqi", "dominantPollutant"],
         template=(
-            "You are a helpful AI called 'BreathWell AI' that provides air quality recommendations. "
+            "You are a helpful AI BreathWell Assistant that provides air quality recommendations. "
             "The air quality category is '{category}', with an AQI of {aqi}. "
             "The dominant pollutant is {dominantPollutant}. "
             "\n\n"
@@ -225,12 +223,9 @@ agent = initialize_agent(
     verbose=True,
     handle_parsing_errors=True
 )
-# Define the user query
-user_query = str(input("Your Question: ")) 
 
-# Run the agent
-struct_response = agent.invoke(user_query)
-print(struct_response["output"] if "output" in struct_response else "Error: No output found.")
+
+
 
 
 

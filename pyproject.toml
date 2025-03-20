@@ -16,6 +16,10 @@ langchain-openai = "^0.3.7"
 pypdf = "^5.3.1"
 faiss-cpu = "^1.10.0"
 langgraph = "^0.3.11"
+streamlit-chat = "^0.1.1"
+Flask = "^3.1.0"
+flask-cors = "^5.0.1"
+gradio = "^5.22.0"
 
 [tool.poetry.dev-dependencies]
 
