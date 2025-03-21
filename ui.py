@@ -10,7 +10,7 @@ def chatbot_response(user_input):
 custom_css = """
 /* General Container */
 .gradio-container {
-    background-color: #fff6fd;  /* Light Baby Pink */
+    background-color: #d3e6c2;  /* Light sap green */
     font-family: 'Inter', sans-serif;
     padding: 20px;
 }
@@ -32,16 +32,30 @@ h3 {
     margin-bottom: 20px;
 }
 
+/* Input Row Styling */
+.input-row {
+    width: auto;  /* Adjust width */
+    max-width: 1200px;  /* Prevents it from stretching too much */
+    min-width: 500px;  /* Keeps it from being too small */
+    margin: 0 auto;  /* Centers the row */
+    background: #97a888;
+    display: flex
+}
+
 
 /* Textbox Styling (Input) */
 textarea {
     font-size: 16px;
     color: #251F44;
-    background: #FAF8FC;  /* Off White */
-    border: 1px solid #E26EE5;  /* Border Around Input */
+    background: #f8fdee;  /* Off White */
+    border: 1px solid #251F44;  /* Border Around Input */
     border-radius: 12px;
     padding: 12px;
+    width: 70%;  /* Limits the width */
+    max-width: 800px;  /* Prevents it from stretching too much */
+    min-width: 300px;  /* Ensures it doesn't get too small */
     transition: all 0.3s ease-in-out;
+    display: block
 }
 
 textarea::placeholder {
@@ -56,8 +70,8 @@ textarea:focus {
 
 /* Button Styling */
 button {
-    background-color: #70005a !important;
-    color: #dbc2d6 !important;
+    background-color: #addb8a !important;
+    color: #251F44 !important;
     border-radius: 10px !important;
     font-size: 18px !important;
     padding: 10px 20px !important;
@@ -66,33 +80,48 @@ button {
 }
 
 button:hover {
-    background-color: #420236 !important;
-    box-shadow: 0px 4px 10px rgba(211, 79, 146, 0.3);
+    background-color: #8baf6e !important;
+    box-shadow: 0px 4px 10px rgba(80, 125, 42, 0.3);
 }
+
+/* Ask AI Button Styling */
+.ask-ai-button {
+    width: auto;  /* Button width adjusts based on content */
+    padding: 10px 20px;  /* Add some space around text */
+    margin: 12px auto;  /* Center the button */
+    display: block;  /* Ensures centering works properly */
+}
+
 
 /* AI Response Static Text */
 .ai-response-text {
     text-align: center;
     font-size: 1.05em;
     font-weight: 500;
-    color: #49108B;  /* Deep purple for readability */
-    background: #FFE0F7; /* Soft baby pink */
+    color: #251F44;  /* Deep purple for readability */
+    background: #f8fdee; /* Soft cool green */
     padding: 8px;
     margin-top: 8px;
     border-radius: 6px;
-    width: 80%;
+    width: auto;
     margin-left: auto;
     margin-right: auto;
+    display: block;
 }
 
 /* Output Box */
 .gr-textbox-output {
-    background-color: #FAF8FC;  /* Off White */
+    background-color: #f8fdee;  /* Off White Green */
     border: 1px solid #49108B;  /* Border Around Output */
     border-radius: 12px;
     color: #251F44;
     font-size: 16px;
     padding: 12px;
+    width: 70%;  /* Limits the width */
+    max-width: 800px;  /* Prevents excessive stretching */
+    min-width: 300px; 
+    margin-left: auto;
+    margin-right: auto;
 }
 
 
@@ -100,17 +129,17 @@ button:hover {
 
 # Creating the Gradio App with Advanced UI
 with gr.Blocks(css=custom_css) as demo:
-    gr.Markdown("# 🫁 🌸 BreathWell AI - Asthma Assistant 🌷")
+    gr.Markdown("# 🫁 🌿 BreathWell AI - Asthma Assistant 🌷")
     gr.Markdown("### Ask for your medical history, air quality, or recommendations with expert AI guidance.")
 
-    with gr.Row():
+    with gr.Row(elem_classes=["input-row"]):
         user_input = gr.Textbox(
             lines=2, 
             placeholder="Hello! How can I assist you today?", 
             label="Your Question"
         )
     
-    submit_button = gr.Button("Ask AI")
+    submit_button = gr.Button("Ask AI", elem_classes=["ask-ai-button"])
 
     gr.Markdown("#### *AI Response will appear down here...*", elem_classes=["ai-response-text"])
     
