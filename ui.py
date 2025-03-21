@@ -34,12 +34,15 @@ h3 {
 
 /* Input Row Styling */
 .input-row {
-    width: auto;  /* Adjust width */
-    max-width: 1200px;  /* Prevents it from stretching too much */
+    width: 70%;  /* Adjust width */
+    max-width: 800px;  /* Prevents it from stretching too much */
     min-width: 500px;  /* Keeps it from being too small */
     margin: 0 auto;  /* Centers the row */
     background: #97a888;
-    display: flex
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px auto; /* Adjust spacing */
 }
 
 
@@ -56,6 +59,7 @@ textarea {
     min-width: 300px;  /* Ensures it doesn't get too small */
     transition: all 0.3s ease-in-out;
     display: block
+    
 }
 
 textarea::placeholder {
@@ -88,8 +92,10 @@ button:hover {
 .ask-ai-button {
     width: auto;  /* Button width adjusts based on content */
     padding: 10px 20px;  /* Add some space around text */
-    margin: 12px auto;  /* Center the button */
-    display: block;  /* Ensures centering works properly */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px auto; /* Adjust spacing */
 }
 
 
@@ -101,12 +107,12 @@ button:hover {
     color: #251F44;  /* Deep purple for readability */
     background: #f8fdee; /* Soft cool green */
     padding: 8px;
-    margin-top: 8px;
     border-radius: 6px;
     width: auto;
-    margin-left: auto;
-    margin-right: auto;
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px auto; /* Adjust spacing */
 }
 
 /* Output Box */
@@ -120,8 +126,11 @@ button:hover {
     width: 70%;  /* Limits the width */
     max-width: 800px;  /* Prevents excessive stretching */
     min-width: 300px; 
-    margin-left: auto;
-    margin-right: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px auto; /* Adjust spacing */
+
 }
 
 
